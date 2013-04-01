@@ -29,7 +29,7 @@ GnutellaApp::GnutellaApp(Address addr, Address boots)
 	m_bootstrap = boots;
 	m_gnutella_joined = false;
 	
-	
+	cache.m_capacity = 10;
 	// generate serventID
 	GetServentID(a.GetIpv4(), m_servent_id);
 	
@@ -491,7 +491,16 @@ void GnutellaApp::HandleQuery(QueryDescriptor* desc, Peer* p)
 	}
 	else if(desc->query_type_==1)
 	{//fast query - search in cache. do not forward
-
+		CacheEntry entry;
+		bool result = cache.get(desc->GetSearchCriteria(), entry);
+		if(result == true)
+		{
+			//return the cached entry
+		}
+		else
+		{
+			//must return a fast query failure
+		}
 	}
 	else
 	{//slow query
@@ -534,6 +543,9 @@ void GnutellaApp::HandleQueryHit(QueryHitDescriptor *desc)
 			desc->Hop();
 			if (desc->GetTtl() > 0)
 			{
+				//add entry to cache
+				CacheEntry entry= CacheEntry::Create(desc);
+				cache.put(desc->result_set_->shared_file_name, entry);
 				Send(desc, r->GetPeer());
 			}
 			m_requests.RemoveRequest(r);

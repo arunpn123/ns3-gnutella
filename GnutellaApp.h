@@ -1,6 +1,6 @@
 #ifndef GNUTELLAAPP_H
 #define GNUTELLAAPP_H
-
+#include <string>
 #include "ns3/core-module.h"
 #include "ns3/network-module.h"
 #include "ns3/internet-module.h"
@@ -15,6 +15,7 @@
 #include "File.h"
 #include "FileDownloadContainer.h"
 #include "QueryLatencyContainer.h"
+#include "Cache.h"
 
 // Define Constants
 #define MSG_CONNECT_REQUEST 		"GNUTELLA CONNECT/0.4\n\n"
@@ -155,7 +156,9 @@ class GnutellaApp: public Application
 
         FileDownloadContainer m_downloads;
 
-	QueryLatencyContainer m_query_responses;
+        QueryLatencyContainer m_query_responses;
+
+        LruCache<std::string, CacheEntry> cache;
 };
 
 #endif
