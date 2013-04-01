@@ -101,7 +101,7 @@ void simOne(uint32_t nNodes)
 
     ApplicationContainer apps;
 
-    NS_LOG_INFO ("Creating Apps");
+    NS_LOG_INFO ("Creating Apps 1");
 
     Ptr<GnutellaApp> app;
     InetSocketAddress addr(ipf.GetAddress(0), DEFAULT_LISTENING_PORT);
@@ -171,9 +171,10 @@ void simOne(uint32_t nNodes)
     {
         Ptr<Node> node = nodes.Get(n);
         Ptr<GnutellaApp> gapp = Ptr<GnutellaApp> (dynamic_cast<GnutellaApp *> (PeekPointer (node->GetApplication(0))));
-	if (gapp != NULL && gapp->GetAverageQueryResponseTime() > 0) {
+        if (gapp != NULL && gapp->GetAverageQueryResponseTime() > 0)
+        {
 	        totalqrt += gapp->GetAverageQueryResponseTime();
-                totaln++;
+            totaln++;
         }
     }
 

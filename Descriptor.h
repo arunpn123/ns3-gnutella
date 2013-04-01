@@ -169,8 +169,10 @@ class QueryDescriptor : public Descriptor
 	uint16_t min_speed_;
 	// Null terminated string
 	std::string search_criteria_;
+//Query cacheing gnutella
+	uint16_t query_type_;   //0 - Slow query  1 - Fast query
 
-    public:
+public:
     static QueryDescriptor * Create(DescriptorHeader header, 
             const uint8_t *descriptor_payload);
   
@@ -183,7 +185,7 @@ class QueryDescriptor : public Descriptor
 	QueryDescriptor(DescriptorHeader header, 
             uint16_t min_speed, 
             std::string search_criteria);
-	QueryDescriptor(ns3::Ptr<ns3::Node> n, uint16_t min_speed, std::string filename);
+	QueryDescriptor(ns3::Ptr<ns3::Node> n, uint16_t min_speed, std::string filename, uint16_t query_type);
 	~QueryDescriptor();
 };
 

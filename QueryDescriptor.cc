@@ -65,7 +65,7 @@ QueryDescriptor::QueryDescriptor(DescriptorHeader h,
 	type_ = QUERY;
 }
 
-QueryDescriptor::QueryDescriptor(ns3::Ptr<ns3::Node> n, uint16_t min_speed, std::string filename)
+QueryDescriptor::QueryDescriptor(ns3::Ptr<ns3::Node> n, uint16_t min_speed, std::string filename, uint16_t query_type)
 {
     type_ = QUERY;
     header_.descriptor_id = DescriptorId::Create(n);
@@ -76,6 +76,7 @@ QueryDescriptor::QueryDescriptor(ns3::Ptr<ns3::Node> n, uint16_t min_speed, std:
     header_.payload_length = 2 + filename.length() + 1;
     min_speed_ = min_speed;
     search_criteria_ = filename;
+    query_type_ = query_type;
 }
 
 QueryDescriptor::~QueryDescriptor()

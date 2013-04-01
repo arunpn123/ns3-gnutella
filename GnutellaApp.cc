@@ -489,27 +489,33 @@ void GnutellaApp::HandleQuery(QueryDescriptor* desc, Peer* p)
 		delete [] result_set;
 		
 	}
-	
-	// Decrement ping ttl, increment hops
-	desc->Hop();
-	Request *r = m_requests.GetRequestById(desc->GetHeader().descriptor_id);
-	// Make sure TTL != 0 first.
-	if (desc->GetTtl() > 0 && !(r != NULL && r->GetType() == desc->GetType()) )
-	{
-		// Foward query
-		for (size_t i = 0; i < m_connected_peers.GetSize(); i++)
-		{
-			if (m_connected_peers.GetPeer(i) != p)
-            {
-				Send(desc, m_connected_peers.GetPeer(i));
-                LogMessage("Forwarding QUERY");
-            }
-		}
-		
-		// Add request to our table
-		m_requests.AddRequest(new Request(desc, p));	
+	else if(desc->query_type_==1)
+	{//fast query - search in cache. do not forward
+
 	}
+	else
+	{//slow query
 	
+		// Decrement ping ttl, increment hops
+		desc->Hop();
+		Request *r = m_requests.GetRequestById(desc->GetHeader().descriptor_id);
+		// Make sure TTL != 0 first.
+		if (desc->GetTtl() > 0 && !(r != NULL && r->GetType() == desc->GetType()) )
+		{
+			// Foward query
+			for (size_t i = 0; i < m_connected_peers.GetSize(); i++)
+			{
+				if (m_connected_peers.GetPeer(i) != p)
+				{
+					Send(desc, m_connected_peers.GetPeer(i));
+					LogMessage("Forwarding QUERY");
+				}
+			}
+
+			// Add request to our table
+			m_requests.AddRequest(new Request(desc, p));
+		}
+	}
 	
 }
 
@@ -733,7 +739,8 @@ void GnutellaApp::SendQuery(std::string filename)
     {
 		// A new descriptor is generated for each query;
 		// because descriptor ID needs to be unique
-		QueryDescriptor *q = new QueryDescriptor(GetNode(), 0, filename);
+    	//first send a fast query to all connected peers
+		QueryDescriptor *q = new QueryDescriptor(GetNode(), 0, filename, 1);
  
         // Update the query response measurements
 		DescriptorId desc_id = q->GetHeader().descriptor_id;

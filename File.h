@@ -28,7 +28,7 @@ class FileContainer
 		// Return an empty vector if no file is found
 		std::vector<File*> GetFileByName(std::string filename);
 		std::vector<File*> GetAllFiles();
-                File* GetFileByIndex(size_t index);
+        File* GetFileByIndex(size_t index);
 		int GetIndexByFile(File* f); // return index of a file, if found, otherwise return -1
 	private:
 		std::vector<File*> file_vector_;
