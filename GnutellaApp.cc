@@ -495,11 +495,13 @@ void GnutellaApp::HandleQuery(QueryDescriptor* desc, Peer* p)
 		bool result = cache.get(desc->GetSearchCriteria(), entry);
 		if(result == true)
 		{
+			Send(entry ,p);
 			//return the cached entry
 		}
 		else
 		{
-			//must return a fast query failure
+
+			//should we return anything? For slow queries we dont. Why should this return a failure?
 		}
 	}
 	else

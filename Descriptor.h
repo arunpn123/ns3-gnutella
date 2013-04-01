@@ -39,6 +39,7 @@ class PingDescriptor;
 class PongDescriptor;
 class QueryDescriptor;
 class QueryHitDescriptor;
+class CacheQueryHitDescriptor;
 
 class DescriptorId
 {
@@ -66,7 +67,9 @@ class Descriptor
             PONG = 0x01,
             QUERY = 0x80,
             QUERYHIT = 0x81,
-            PUSH = 0x40
+            PUSH = 0x40,
+            FASTQUERY,
+            FASTQUERYHIT
         } DescriptorType;
 	/*static PingDescriptor * Create(const char *p_descriptor);
 	static PongDescriptor * Create(const char *p_descriptor);
