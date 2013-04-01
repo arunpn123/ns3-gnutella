@@ -627,8 +627,33 @@ void GnutellaApp::HandleFastQueryMiss(FastQueryMissDescriptor* desc)
 	std::stringstream sa;
 	sa << "Received Fast QueryMiss " << desc->file_name_;
 	LogMessage(sa.str().c_str());
-	fastquery_responsecount++;
 
+	//fastquery_responsecount++;
+	std::map<std::string, int>::iterator it;
+	it = fastquery_responsecount.find(desc->file_name_);
+	int responsecount = it->second;
+	fastquery_responsecount.erase(it);
+    responsecount++;
+    fastquery_responsecount.insert(desc->file_name_, responsecount);
+
+    it = fastquery_requestcount.find(desc->file_name_);
+	int requestcount = it->second;
+
+    if(responsecount == requestcount)
+    {
+    	//TODO: send slow query
+    	int neighbors_count= m_connected_peers.GetSize();
+
+		for (size_t i = 0; i < neighbors_count; i++) {
+			QueryDescriptor *q = new QueryDescriptor(GetNode(), 0, filename, 0);  //0 represents slow query
+			DescriptorId desc_id = q->GetHeader().descriptor_id;
+			m_query_responses.AddQuery(desc_id);
+			m_requests.AddRequest(new Request(q, NULL, true));
+
+			Send(q, m_connected_peers.GetPeer(i));
+		}
+
+    }
 }
 
 void GnutellaApp::HandlePush(PushDescriptor *desc)
