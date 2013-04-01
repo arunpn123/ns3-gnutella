@@ -196,8 +196,6 @@ void GnutellaApp::HandleRead (Ptr<Socket> socket)
 				ti = tb.Begin();
 				HandleFileDownloadRequest(p, ti);
 			}
-            
-            
 
             delete [] buffer;
         }
@@ -229,8 +227,9 @@ void GnutellaApp::HandlePeerMessage (Peer * p, const uint8_t * buffer)
             break;
         case Descriptor::PUSH:
 			HandlePush((PushDescriptor*)(desc));
-        case Descriptor::FASTQUERYHIT:
-        	HandleFastQueryHit((CacheEntry*)entry, hit);
+			break;
+        case Descriptor::FASTQUERYMISS:
+        	HandleFastQueryMiss((FastQueryMissDescriptor*)desc);
     }
 }
 
@@ -494,15 +493,46 @@ void GnutellaApp::HandleQuery(QueryDescriptor* desc, Peer* p)
 	else if(desc->query_type_==1)
 	{//fast query - search in cache. do not forward
 		CacheEntry entry;
-		bool result = cache.get(desc->GetSearchCriteria(), entry);
-		if(result == true)
+		bool cacheresult = cache.get(desc->GetSearchCriteria(), entry);
+		if(cacheresult == true)
 		{
-			Send(entry ,p);
-			//return the cached entry
+			//prepare a queryhitdescriptor and populate it with the cache entries and send
+			//TODO: not sure about serverid
+			// Create a new QueryHit descriptor
+			Descriptor::DescriptorHeader header;
+			header.descriptor_id = desc->GetHeader().descriptor_id;
+			header.payload_descriptor = Descriptor::QUERYHIT;
+			header.ttl = DEFAULT_TTL;
+			header.hops = 0;
+
+			// convert std::vector result set to an array
+			Result* result_set = new Result[1];
+			for (size_t i = 0; i < 1; i++)
+			{
+				result_set[i].file_index = (uint32_t) entry.file_index_;
+				result_set[i].file_size = entry.file_size_;
+				strcpy(result_set[i].shared_file_name,entry.file_name_);
+			}
+			// compute size of result set
+			uint32_t size = 0;
+			for (size_t i = 0; i < 1; i++)
+			{
+			   size += (8 + result_set[i].shared_file_name.size() + 2); // 2 = \0\0
+			}
+
+			header.payload_length = 27 + size;
+			// create desc
+			QueryHitDescriptor *qh_desc = new QueryHitDescriptor(header, 1,
+				entry.port_, entry.ip_address_, DEFAULT_SPEED, result_set, 0);
+			Send(qh_desc, p);
+			LogMessage("Sending FAST_QUERY_HIT");
+			delete [] result_set;
 		}
 		else
 		{
 			//need to write the Fast query failure descriptor and send it
+			FastQueryMissDescriptor* miss_desc = FastQueryMissDescriptor::Create(desc->GetHeader().descriptor_id, desc->search_criteria_);
+			Send(miss_desc, p);
 		}
 	}
 	else
@@ -551,7 +581,7 @@ void GnutellaApp::HandleQueryHit(QueryHitDescriptor *desc)
 				cache.put(desc->result_set_->shared_file_name, entry);
 				Send(desc, r->GetPeer());
 			}
-			m_requests.RemoveRequest(r);
+			m_requests.RemoveRequest(r);HandleFastQueryMiss
 		}
 		else if (r->IsSelf()) // it's for me
 		{
@@ -592,8 +622,12 @@ void GnutellaApp::HandleQueryHit(QueryHitDescriptor *desc)
 	}
 }
 
-void GnutellaApp::HandleFastQueryHit(CacheEntry* entry, bool hit)
-{
+void GnutellaApp::HandleFastQueryMiss(FastQueryMissDescriptor* desc)
+{ // This is called at the node which sends out the FastQuery
+	std::stringstream sa;
+	sa << "Received Fast QueryMiss " << desc->file_name_;
+	LogMessage(sa.str().c_str());
+	fastquery_responsecount++;
 
 }
 
@@ -755,8 +789,12 @@ void GnutellaApp::SendQuery(std::string filename)
 
     //create a response queue for this file and add it to the node's list of response queues
 
+    int neighbors_count= m_connected_peers.GetSize();
 
-    for (size_t i = 0; i < m_connected_peers.GetSize(); i++)
+    fastquery_requestcount.insert(filename, neighbors_count);
+    fastquery_responsecount.insert(filename, 0);
+
+    for (size_t i = 0; i < neighbors_count; i++)
     {
 		// A new descriptor is generated for each query;
 		// because descriptor ID needs to be unique

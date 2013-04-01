@@ -35,7 +35,7 @@ QueryHitDescriptor::Create(DescriptorHeader header, const uint8_t *descriptor_pa
 	<< std::hex << ip_address);
     NS_LOG_INFO ("Query Hit Descriptor Speed: "
 	<< std::dec << speed);
-
+    Receive
     results = new Result[atoi(num_hits)];
     int index = 11;
     for (int i = 0; i < atoi(num_hits); i++)
@@ -110,6 +110,7 @@ QueryHitDescriptor::QueryHitDescriptor(DescriptorHeader h, uint8_t num_hits,
 	ip_address_(ip_address), speed_(speed), result_set_(result_set)
 {
 	type_ = QUERYHIT;
+	this->query_hit_type_=0;
 	memcpy(servant_identifier_, servant_identifier, 16);
 }
 

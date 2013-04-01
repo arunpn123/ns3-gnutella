@@ -39,7 +39,7 @@ class PingDescriptor;
 class PongDescriptor;
 class QueryDescriptor;
 class QueryHitDescriptor;
-class CacheQueryHitDescriptor;
+class FastQueryMissDescriptor;
 
 class DescriptorId
 {
@@ -69,7 +69,8 @@ class Descriptor
             QUERYHIT = 0x81,
             PUSH = 0x40,
             FASTQUERY,
-            FASTQUERYHIT
+            FASTQUERYHIT,
+            FASTQUERYMISS
         } DescriptorType;
 	/*static PingDescriptor * Create(const char *p_descriptor);
 	static PongDescriptor * Create(const char *p_descriptor);
@@ -206,6 +207,9 @@ class QueryHitDescriptor : public Descriptor
 	Result *result_set_;
 	// 16 bytes
 	uint8_t servant_identifier_[16];
+	//Query cacheing gnutella
+	uint16_t query_hit_type_;   //0 - Slow query  1 - Fast query
+
 
     public:
     static QueryHitDescriptor * Create(DescriptorHeader header, const uint8_t *descriptor_payload);
@@ -236,5 +240,24 @@ class PushDescriptor : public Descriptor
 	public:
 	static PushDescriptor * Create(DescriptorHeader header, const uint8_t *descriptor_payload);
 };
+
+class FastQueryMissDescriptor : public Descriptor
+{
+	std::string file_name_;
+
+    public:
+    static FastQueryMissDescriptor * Create(DescriptorId id, std::string file_name);
+
+	void Serialize(ns3::Buffer::Iterator start);
+	uint32_t GetSerializedSize();
+
+	std::string getfilename()
+	{
+		return file_name_;
+	}
+    FastQueryMissDescriptor(DescriptorId id, std::string file_name);
+	~FastQueryMissDescriptor();
+};
+
 
 #endif

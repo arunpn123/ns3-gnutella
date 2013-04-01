@@ -83,7 +83,7 @@ class GnutellaApp: public Application
     	//		2) Otherwise, Initiate a download from the host with the file
     	void HandleQueryHit(QueryHitDescriptor *desc);
 
-    	void HandleFastQueryHit(CacheEntry *entry, bool hit);
+    	void HandleFastQueryMiss(FastQueryMissDescriptor* desc);
 
     	void HandlePush(PushDescriptor *desc);
 
@@ -163,7 +163,9 @@ class GnutellaApp: public Application
 
         LruCache<std::string, CacheEntry> cache;
 
-        std::multimap request_list;
+        std::map <std::string, std::queue<QueryHitDescriptor> > fastqueryhit_responselist;
+        std::map <std::string, int count> fastquery_responsecount;
+        std::map <std::string, int count> fastquery_requestcount;
 };
 
 #endif
