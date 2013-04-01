@@ -229,6 +229,8 @@ void GnutellaApp::HandlePeerMessage (Peer * p, const uint8_t * buffer)
             break;
         case Descriptor::PUSH:
 			HandlePush((PushDescriptor*)(desc));
+        case Descriptor::FASTQUERYHIT:
+        	HandleFastQueryHit((CacheEntry*)entry, hit);
     }
 }
 
@@ -500,8 +502,7 @@ void GnutellaApp::HandleQuery(QueryDescriptor* desc, Peer* p)
 		}
 		else
 		{
-
-			//should we return anything? For slow queries we dont. Why should this return a failure?
+			//need to write the Fast query failure descriptor and send it
 		}
 	}
 	else
@@ -589,6 +590,11 @@ void GnutellaApp::HandleQueryHit(QueryHitDescriptor *desc)
 		}
 		
 	}
+}
+
+void GnutellaApp::HandleFastQueryHit(CacheEntry* entry, bool hit)
+{
+
 }
 
 void GnutellaApp::HandlePush(PushDescriptor *desc)
@@ -747,12 +753,14 @@ void GnutellaApp::SendQuery(std::string filename)
 {
     LogMessage(("Sending Query: " + filename).c_str());
 
+    //create a response queue for this file and add it to the node's list of response queues
 
 
     for (size_t i = 0; i < m_connected_peers.GetSize(); i++)
     {
 		// A new descriptor is generated for each query;
 		// because descriptor ID needs to be unique
+
     	//first send a fast query to all connected peers
 		QueryDescriptor *q = new QueryDescriptor(GetNode(), 0, filename, 1);
  

@@ -1,6 +1,7 @@
 #ifndef GNUTELLAAPP_H
 #define GNUTELLAAPP_H
 #include <string>
+#include <map>
 #include "ns3/core-module.h"
 #include "ns3/network-module.h"
 #include "ns3/internet-module.h"
@@ -82,6 +83,8 @@ class GnutellaApp: public Application
     	//		2) Otherwise, Initiate a download from the host with the file
     	void HandleQueryHit(QueryHitDescriptor *desc);
 
+    	void HandleFastQueryHit(CacheEntry *entry, bool hit);
+
     	void HandlePush(PushDescriptor *desc);
 
         // HandleFileDownloadRequest:
@@ -159,6 +162,8 @@ class GnutellaApp: public Application
         QueryLatencyContainer m_query_responses;
 
         LruCache<std::string, CacheEntry> cache;
+
+        std::multimap request_list;
 };
 
 #endif
