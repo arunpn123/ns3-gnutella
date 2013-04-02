@@ -113,6 +113,9 @@ class GnutellaApp: public Application
     	// Initalize a connection to a peer
     	Ptr<Socket> ConnectToPeer(Address from, bool dl = false);
     	
+    	//Query caching gnutella
+    	Ptr<Socket> ConnectToFastQueryDownloadPeer(Address from, std::string file_name);
+
     	// Accept a node into the network, called when GNUTELLA CONNECT is received
     	void AcceptGnutellaConnection(Ptr<Socket> socket, Address from);
     	

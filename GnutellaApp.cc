@@ -311,6 +311,17 @@ void GnutellaApp::HandleFileDownloadResponse(Peer *p, ns3::Buffer::Iterator it)
     m_downloads.RemoveDownload(p);
    
     delete [] data_buffer;
+
+    //delete the file and queue in the map
+    std::map<std::string, int>::iterator it;
+    it = fastqueryhit_responselist.find(filename);
+    fastqueryhit_responselist.erase(it);
+
+    it= fastquery_responsecount.find(filename);
+    fastquery_responsecount.erase(it);
+
+    it= fastquery_requestcount.find(filename);
+    fastquery_requestcount.erase(it);
 }
 
 void GnutellaApp::SendFileDownloadRequest(Peer *p, uint32_t file_index,
@@ -638,12 +649,11 @@ void GnutellaApp::HandleFastQueryMiss(FastQueryMissDescriptor* desc)
 
     it = fastquery_requestcount.find(desc->file_name_);
 	int requestcount = it->second;
-
+	QueryDescriptor
     if(responsecount == requestcount)
     {
-    	//TODO: send slow query
+    	// send slow query
     	int neighbors_count= m_connected_peers.GetSize();
-
 		for (size_t i = 0; i < neighbors_count; i++) {
 			QueryDescriptor *q = new QueryDescriptor(GetNode(), 0, filename, 0);  //0 represents slow query
 			DescriptorId desc_id = q->GetHeader().descriptor_id;
@@ -721,6 +731,31 @@ Ptr<Socket> GnutellaApp::ConnectToPeer(Address peeraddr, bool dl)
         
     return socket;
 }
+Ptr<Socket> GnutellaApp::ConnectToFastQueryDownloadPeer(Address from, std::string file_name)
+{
+	TypeId tid = TypeId::LookupByName ("ns3::TcpSocketFactory");
+	Ptr<Socket> socket = Socket::CreateSocket (GetNode (), tid);
+	socket->Bind();
+
+	// Connect callbacks
+		socket->SetConnectCallback (
+			MakeCallback (&GnutellaApp::FastQueryDownloadConnectionSucceeded, this, file_name),
+			MakeCallback (&GnutellaApp::FastQueryDownloadConnectionFailed, this, file_name ));
+
+
+    // Close callbacks
+    socket->SetCloseCallbacks (
+		MakeCallback (&GnutellaApp::HandlePeerClose, this),
+		MakeCallback (&GnutellaApp::HandlePeerError, this));
+
+	// Receive callbacks
+    socket->SetRecvCallback (
+            MakeCallback (&GnutellaApp::HandleRead, this));
+
+	socket->Connect(peeraddr);
+
+    return socket;
+}
 
 void GnutellaApp::ConnectionSucceeded(Ptr<Socket> socket)
 {
@@ -750,6 +785,22 @@ void GnutellaApp::DownloadConnectionSucceeded(Ptr<Socket> socket)
 		SendFileDownloadRequest(p, (uint32_t) index, m_downloads.GetFileName(p));
 }
 
+void GnutellaApp::FastQueryDownloadConnectionSucceeded(Ptr<Socket> socket, std::string file_name)
+{
+    LogMessage("Connected to Peer (Download)");
+    // Successfully connected to our host;
+    // Send a download request.
+    Peer *p = m_connected_peers.GetPeerBySocket(socket);
+
+    // Get the filename/index
+    int index = m_downloads.GetIndex(p);
+    // Send file download request
+    if (index != -1)
+		SendFileDownloadRequest(p, (uint32_t) index, m_downloads.GetFileName(p));
+
+
+}
+
 void GnutellaApp::DownloadConnectionFailed(Ptr<Socket> socket)
 {
     LogMessage("Failed to Connect (Download)");
@@ -758,6 +809,40 @@ void GnutellaApp::DownloadConnectionFailed(Ptr<Socket> socket)
     m_connected_peers.RemovePeer(p);
 }
 
+void GnutellaApp::FastQueryDownloadConnectionFailed(Ptr<Socket> socket, std::string file_name)
+{
+    LogMessage("Failed to Connect (Download)");
+
+    Peer *p = m_connected_peers.GetPeerBySocket(socket);
+    m_connected_peers.RemovePeer(p);
+
+    //pop from response queue and send download request
+
+    std::map<std::string, int>::iterator it;
+	it = fastqueryhit_responselist.find(file_name);
+	int responsecount= it->second.size();
+	if(responsecount >0)
+	{
+		QueryHitDescriptor* desc = it->second.pop();
+		// The host with the file most likely is not a connected peer, but we test for it anyway
+		InetSocketAddress inetaddr(desc->GetIp(), desc->GetPort());
+		Address addr = inetaddr;
+		Peer *p = m_connected_peers.GetPeerByAddress(addr);
+		if(p == NULL) // The peer is not connected
+		{
+			Ptr < Socket > socket = ConnectToFastQueryDownloadPeer(addr, file_name);
+			p = AddConnectedPeer(addr, socket);
+		}
+		else // Connected; send request right away
+		{
+			SendFileDownloadRequest(p, result_set[0].file_index,
+					result_set[0].shared_file_name);
+		}
+		// Store the peer/filename+index download pair because the response won't contain it
+		m_downloads.AddDownload(p, result_set[0].shared_file_name,
+				result_set[0].file_index);
+	}
+}
 
 void GnutellaApp::HandlePeerClose (Ptr<Socket> socket)
 {
