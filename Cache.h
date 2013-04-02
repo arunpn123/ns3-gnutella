@@ -43,8 +43,8 @@ class CacheEntry
 
 	public:
 	static CacheEntry * Create(QueryHitDescriptor* desc);
-	CachEntry(QueryHitDescriptor *desc);
-	~CachEntry();
+	CacheEntry(QueryHitDescriptor *desc);
+	~CacheEntry();
 };
 //planning to use the cache as a store for <filename, CachEntry> pairs
 

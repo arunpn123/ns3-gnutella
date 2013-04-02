@@ -167,8 +167,8 @@ class GnutellaApp: public Application
         LruCache<std::string, CacheEntry> cache;
 
         std::map <std::string, std::queue<QueryHitDescriptor> > fastqueryhit_responselist;
-        std::map <std::string, int count> fastquery_responsecount;
-        std::map <std::string, int count> fastquery_requestcount;
+        std::map <std::string, int> fastquery_responsecount;
+        std::map <std::string, int> fastquery_requestcount;
 };
 
 #endif
