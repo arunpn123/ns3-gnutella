@@ -613,11 +613,31 @@ void GnutellaApp::HandleQueryHit(QueryHitDescriptor *desc)
 			Peer *p = m_connected_peers.GetPeerByAddress(addr);
 			if (p == NULL) // The peer is not connected
 			{
+				Ptr < Socket > socket;
 				// Initiate a connection
 				// Wait for connection to succeed (DownloadConnectionSucceed)
 				// then send a download request.
-				Ptr<Socket> socket = ConnectToPeer(addr, true);
-			
+				//Check for query_hit_type. If Not a FastQuery, ConnectToPeer with Download = true
+				if(desc->query_hit_type_ == 0)
+					socket = ConnectToPeer(addr, true);
+				else{
+					//If FastQuery check if response count is 0. If not 0, increment response count and add QueryHitDescriptor to the queue
+					std::map<std::string, int>::iterator it;
+					it = fastquery_responsecount.find(desc->result_set_[0].shared_file_name) ;
+					if( it->second > 0){
+						std::map<std::string, std::queue<QueryHitDescriptor> >::iterator itQueue;
+						it->second++;
+						itQueue->second.push(*desc);
+					}
+					else {
+
+						//responseCount = 0 => first response. So make a connection to download the file
+						it->second++;
+						socket = ConnectToFastQueryDownloadPeer(
+								addr, desc->result_set_[0].shared_file_name);
+					}
+
+				}
 				// Add the host to our peer container
 				// This action is not specified in the spec, but it makes
 				// things simpler.
@@ -627,6 +647,7 @@ void GnutellaApp::HandleQueryHit(QueryHitDescriptor *desc)
 			else // Connected; send request right away
 			{
 				SendFileDownloadRequest(p, result_set[0].file_index, result_set[0].shared_file_name);
+
 			}
 			// Store the peer/filename+index download pair because the response won't contain
 			// it
@@ -735,17 +756,37 @@ Ptr<Socket> GnutellaApp::ConnectToPeer(Address peeraddr, bool dl)
         
     return socket;
 }
+
+//struct MyCallback
+//{
+//	MyCallback(std::string filename, GnutellApp * app) : m_filename(filename)
+//	{ }
+//
+//	void ConnectFailed(Ptr<Socket> s)
+//	{
+//		// do something with m_filename and s
+//		m_app->
+//	}
+//
+//	std::string m_filename;
+//};
+
 Ptr<Socket> GnutellaApp::ConnectToFastQueryDownloadPeer(Address from, std::string file_name)
 {
 	TypeId tid = TypeId::LookupByName ("ns3::TcpSocketFactory");
 	Ptr<Socket> socket = Socket::CreateSocket (GetNode (), tid);
 	socket->Bind();
-
+	std::string file_name_local;
+	file_name_local.assign(file_name);
+	//Callback<void, Ptr<Socket> > cb;
+	//cb = MakeCallback(&GnutellaApp::FastQueryDownloadConnectionFailed( file_name_local, this));
 	// Connect callbacks
-		socket->SetConnectCallback (
-			MakeCallback (&GnutellaApp::FastQueryDownloadConnectionSucceeded(socket,file_name), this),
-			MakeCallback (&GnutellaApp::FastQueryDownloadConnectionFailed(socket,file_name), this));
-
+//	MyCallback * cb = new MyCallback(file_name);
+	//m_pendingConnectCallbacks.push_back(cb);
+	socket->SetConnectCallback (
+			MakeCallback (&GnutellaApp::FastQueryDownloadConnectionSucceeded, this),
+			MakeCallback (&GnutellaApp::FastQueryDownloadConnectionFailed, this, file_name_local));
+			//MakeCallback(&MyCallback::ConnectFailed, cb));
 
     // Close callbacks
     socket->SetCloseCallbacks (
@@ -789,7 +830,7 @@ void GnutellaApp::DownloadConnectionSucceeded(Ptr<Socket> socket)
 		SendFileDownloadRequest(p, (uint32_t) index, m_downloads.GetFileName(p));
 }
 
-void GnutellaApp::FastQueryDownloadConnectionSucceeded(Ptr<Socket> socket, std::string file_name)
+void GnutellaApp::FastQueryDownloadConnectionSucceeded(Ptr<Socket> socket)
 {
     LogMessage("Connected to Peer (Download)");
     // Successfully connected to our host;
@@ -813,7 +854,7 @@ void GnutellaApp::DownloadConnectionFailed(Ptr<Socket> socket)
     m_connected_peers.RemovePeer(p);
 }
 
-void GnutellaApp::FastQueryDownloadConnectionFailed(Ptr<Socket> socket, std::string file_name)
+void GnutellaApp::FastQueryDownloadConnectionFailed( std::string file_name, Ptr<Socket> socket)
 {
     LogMessage("Failed to Connect (Download)");
 
@@ -824,7 +865,6 @@ void GnutellaApp::FastQueryDownloadConnectionFailed(Ptr<Socket> socket, std::str
 
     std::map<std::string, std::queue<QueryHitDescriptor> >::iterator it;
 	it = fastqueryhit_responselist.find(file_name);
-
 	int responsecount= it->second.size();
 	if(responsecount >0)
 	{

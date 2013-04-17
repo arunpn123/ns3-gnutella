@@ -131,8 +131,8 @@ class GnutellaApp: public Application
     	void DownloadConnectionFailed(Ptr<Socket> socket);
     	void HandlePeerClose (Ptr<Socket>);
 		void HandlePeerError (Ptr<Socket>);
-		void FastQueryDownloadConnectionSucceeded(Ptr<Socket> socket, std::string file_name);
-		void FastQueryDownloadConnectionFailed(Ptr<Socket> socket, std::string file_name);
+		void FastQueryDownloadConnectionSucceeded(Ptr<Socket> socket);
+		void FastQueryDownloadConnectionFailed( std::string file_name, Ptr<Socket> socket);
     	// Generate some files
     	void GenerateFiles();
     	
