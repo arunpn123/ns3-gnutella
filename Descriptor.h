@@ -169,6 +169,7 @@ class PongDescriptor : public Descriptor
 
 class QueryDescriptor : public Descriptor
 {
+public:
 	// 2 bytes
 	uint16_t min_speed_;
 	// Null terminated string
@@ -176,7 +177,7 @@ class QueryDescriptor : public Descriptor
 //Query cacheing gnutella
 	uint16_t query_type_;   //0 - Slow query  1 - Fast query
 
-public:
+
     static QueryDescriptor * Create(DescriptorHeader header, 
             const uint8_t *descriptor_payload);
   
@@ -195,6 +196,7 @@ public:
 
 class QueryHitDescriptor : public Descriptor
 {
+public:
 	// 1 byte
 	uint8_t num_hits_;
 	// 2 bytes
@@ -211,7 +213,7 @@ class QueryHitDescriptor : public Descriptor
 	uint16_t query_hit_type_;   //0 - Slow query  1 - Fast query
 
 
-    public:
+
     static QueryHitDescriptor * Create(DescriptorHeader header, const uint8_t *descriptor_payload);
 
 	void Serialize(ns3::Buffer::Iterator start);
@@ -243,9 +245,10 @@ class PushDescriptor : public Descriptor
 
 class FastQueryMissDescriptor : public Descriptor
 {
+public:
 	std::string file_name_;
 
-    public:
+
     static FastQueryMissDescriptor * Create(DescriptorId id, std::string file_name);
 
 	void Serialize(ns3::Buffer::Iterator start);

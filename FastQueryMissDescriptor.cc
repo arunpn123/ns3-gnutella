@@ -10,7 +10,8 @@ FastQueryMissDescriptor::FastQueryMissDescriptor(DescriptorId id, std::string fi
 {
 	type_ = FASTQUERYMISS;
 	header_.descriptor_id = id;
-	strcpy(file_name_, file_name.c_str());
+	file_name_.assign(file_name);
+	//strcpy(file_name_, file_name.c_str());
 }
 
 FastQueryMissDescriptor *

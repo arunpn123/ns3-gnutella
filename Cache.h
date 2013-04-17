@@ -30,6 +30,7 @@
 
 class CacheEntry
 {
+	public:
 	// 2 bytes
 	uint16_t port_;
 	// 4 bytes (size = 4)
@@ -41,8 +42,12 @@ class CacheEntry
 	// Null terminated string
 	std::string file_name_;
 
-	public:
-	static CacheEntry * Create(QueryHitDescriptor* desc);
+
+	static CacheEntry  Create(QueryHitDescriptor* desc);
+	CacheEntry()
+	{
+
+	}
 	CacheEntry(QueryHitDescriptor *desc);
 	~CacheEntry();
 };
@@ -54,7 +59,11 @@ class LruCache
 public:
     typedef KeyType key_type;
     typedef ValueType value_type;
+    unsigned int m_capacity;
+    LruCache()
+    {
 
+    }
     LruCache(unsigned int capacity) : m_capacity(capacity)
     { }
 
@@ -121,7 +130,7 @@ private:
                 key,
                 std::make_pair(value, it)));
 
-        std::cout << "inserted new item: key=" << key << ", value=" << value << "\n";
+       // std::cout << "inserted new item: key=" << key << ", value=" << value << "\n";
     }
 
     void evict()
@@ -137,7 +146,7 @@ private:
     typedef std::pair<ValueType, typename LruHistoryType::iterator> ValueHistPair;
     typedef std::map<KeyType, ValueHistPair> CacheType;
 
-    unsigned int m_capacity;
+
     LruHistoryType m_history;
     CacheType m_cache;
 };

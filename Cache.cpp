@@ -4,11 +4,11 @@
  *  Created on: Apr 1, 2013
  *      Author: arun
  */
-cache_entry* cache_entry:: create(QueryHitDescriptor * desc)
+CacheEntry CacheEntry:: create(QueryHitDescriptor * desc)
 {
-	return new cache_entry(desc);
+	return new CacheEntry(desc);
 }
-cache_entry::cache_entry(QueryHitDescriptor * desc)
+CacheEntry::CacheEntry(QueryHitDescriptor * desc)
 {
 	port_ = desc->port_;
 		// 4 bytes (size = 4)
