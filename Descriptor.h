@@ -249,7 +249,7 @@ public:
 	std::string file_name_;
 
 
-    static FastQueryMissDescriptor * Create(DescriptorId id, std::string file_name);
+    static FastQueryMissDescriptor * Create(DescriptorHeader id, std::string file_name);
 
 	void Serialize(ns3::Buffer::Iterator start);
 	uint32_t GetSerializedSize();
@@ -258,7 +258,7 @@ public:
 	{
 		return file_name_;
 	}
-    FastQueryMissDescriptor(DescriptorId id, std::string file_name);
+    FastQueryMissDescriptor(DescriptorHeader id, std::string file_name);
 	~FastQueryMissDescriptor();
 };
 

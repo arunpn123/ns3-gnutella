@@ -258,8 +258,10 @@ void GnutellaApp::HandleFileDownloadRequest(Peer *p, ns3::Buffer::Iterator it)
     // 2) Make sure the file index and filename exist
     File *f = m_files.GetFileByIndex(file_index);
 //    NS_LOG_INFO ("Index: " << file_index << " File: " << f->GetFileName() << " Request: " << filename);
-    if (f == NULL || filename.compare(f->GetFileName()) != 0)
-        return;
+    if (f == NULL || filename.compare(f->GetFileName()) != 0){
+    	SendFileDownloadResponseError(p, filename);
+    	return;
+    }
     // 3) Send an HTTP response containing the file data
     ns3::Buffer::Iterator fit = f->GetData().Begin();
     SendFileDownloadResponse(p, fit);
@@ -269,14 +271,48 @@ void GnutellaApp::HandleFileDownloadRequest(Peer *p, ns3::Buffer::Iterator it)
 
 void GnutellaApp::HandleFileDownloadResponse(Peer *p, ns3::Buffer::Iterator it)
 {
+
     LogMessage("Received File");
     if (it.GetSize() <= 92)
 		return;
     std::string filename;
     ns3::Buffer data;
+    uint8_t *header_buffer = new uint8_t[20];
     // 1) Extract the file size and data
     // Skip the initial HTTP
     // HTTP/1.0 200 OK\r\n
+    it.Read(header_buffer, 16);
+    std::string header_string((char*)header_buffer);
+    if(header_string.find("404")!= std::string::npos)
+    {
+
+        std::map<std::string, std::queue<QueryHitDescriptor> >::iterator it;
+    	it = fastqueryhit_responselist.find(filename);
+    	int responsecount= it->second.size();
+    	if(responsecount >0)
+    	{
+    		QueryHitDescriptor desc = it->second.front();
+    		it->second.pop();
+    		// The host with the file most likely is not a connected peer, but we test for it anyway
+    		InetSocketAddress inetaddr(desc.GetIp(), desc.GetPort());
+    		Address addr = inetaddr;
+    		Peer *p = m_connected_peers.GetPeerByAddress(addr);
+    		if(p == NULL) // The peer is not connected
+    		{
+    			Ptr < Socket > socket = ConnectToFastQueryDownloadPeer(addr, filename);
+    			p = AddConnectedPeer(addr, socket);
+    		}
+    		else // Connected; send request right away
+    		{
+    			SendFileDownloadRequest(p, desc.result_set_[0].file_index,
+    					desc.result_set_[0].shared_file_name);
+    		}
+    		// Store the peer/filename+index download pair because the response won't contain it
+    		m_downloads.AddDownload(p, desc.result_set_[0].shared_file_name,
+    				desc.result_set_[0].file_index);
+    	}
+    	return;
+    }
     it.Next(17);
     // Server: Gnutella/0.4\r\n
     it.Next(22);
@@ -376,6 +412,32 @@ void GnutellaApp::SendFileDownloadResponse(Peer *p, ns3::Buffer::Iterator it)
    
     Ptr<Socket> socket = p->GetSocket();
     socket->Send(packet);
+}
+
+void GnutellaApp::SendFileDownloadResponseError(Peer *p, std::string fileName)
+{
+	LogMessage("Sending File");
+	    std::stringstream ss;
+	    ss << "HTTP/1.0 404 OK\r\n";
+	    ss << "Server: Gnutella/0.4\r\n";
+	    ss << "Content-Type: application/binary\r\n";
+	    ss << "Content-Length: " << 0 << "\r\n";
+	    ss << "\r\n";
+	    //data.CopyData(&ss, data.GetSize());
+	//    uint8_t *temp = new uint8_t[it.GetSize()];
+	 //   it.Read(temp, it.GetSize());
+	    //std::string strbuf1 = (const char *) temp;
+		std::string strbuf = ss.str() + fileName;
+	    uint8_t *buffer = (uint8_t *) strbuf.c_str();
+
+	    if (!m_connected_peers.SearchPeer(p))
+	        return;
+
+	    Ptr<Packet> packet = Create<Packet>(buffer, strbuf.size());
+
+	    Ptr<Socket> socket = p->GetSocket();
+	    socket->Send(packet);
+
 }
 
 void GnutellaApp::HandlePing (PingDescriptor *desc, Peer *p)
@@ -546,8 +608,8 @@ void GnutellaApp::HandleQuery(QueryDescriptor* desc, Peer* p)
 		else
 		{
 			//need to write the Fast query failure descriptor and send it
-			FastQueryMissDescriptor* miss_desc = FastQueryMissDescriptor::Create(desc->GetHeader().descriptor_id, desc->search_criteria_);
-			Send(miss_desc, p);
+			FastQueryMissDescriptor* miss_desc = FastQueryMissDescriptor::Create(desc->GetHeader(), desc->search_criteria_);
+			Send((Descriptor*)miss_desc, p);
 		}
 	}
 	else
@@ -620,23 +682,25 @@ void GnutellaApp::HandleQueryHit(QueryHitDescriptor *desc)
 				//Check for query_hit_type. If Not a FastQuery, ConnectToPeer with Download = true
 				if(desc->query_hit_type_ == 0)
 					socket = ConnectToPeer(addr, true);
-				else{
+				else
+				{
 					//If FastQuery check if response count is 0. If not 0, increment response count and add QueryHitDescriptor to the queue
 					std::map<std::string, int>::iterator it;
 					it = fastquery_responsecount.find(desc->result_set_[0].shared_file_name) ;
-					if( it->second > 0){
+					if( it->second > 0)
+					{
 						std::map<std::string, std::queue<QueryHitDescriptor> >::iterator itQueue;
 						it->second++;
 						itQueue->second.push(*desc);
 					}
-					else {
+					else
+					{
 
 						//responseCount = 0 => first response. So make a connection to download the file
 						it->second++;
 						socket = ConnectToFastQueryDownloadPeer(
 								addr, desc->result_set_[0].shared_file_name);
 					}
-
 				}
 				// Add the host to our peer container
 				// This action is not specified in the spec, but it makes
@@ -646,7 +710,28 @@ void GnutellaApp::HandleQueryHit(QueryHitDescriptor *desc)
 			}
 			else // Connected; send request right away
 			{
-				SendFileDownloadRequest(p, result_set[0].file_index, result_set[0].shared_file_name);
+
+				if (desc->query_hit_type_ == 0)
+					SendFileDownloadRequest(p, result_set[0].file_index, result_set[0].shared_file_name);
+				else {
+					//If FastQuery check if response count is 0. If not 0, increment response count and add QueryHitDescriptor to the queue
+					std::map<std::string, int>::iterator it;
+					it = fastquery_responsecount.find(
+							desc->result_set_[0].shared_file_name);
+					if (it->second > 0) {
+						std::map<std::string, std::queue<QueryHitDescriptor> >::iterator itQueue;
+						it->second++;
+						itQueue->second.push(*desc);
+					} else {
+
+						//responseCount = 0 => first response. So download the file
+						it->second++;
+						SendFileDownloadRequest(p, result_set[0].file_index, result_set[0].shared_file_name);
+					}
+				}
+
+
+
 
 			}
 			// Store the peer/filename+index download pair because the response won't contain
@@ -776,17 +861,12 @@ Ptr<Socket> GnutellaApp::ConnectToFastQueryDownloadPeer(Address from, std::strin
 	TypeId tid = TypeId::LookupByName ("ns3::TcpSocketFactory");
 	Ptr<Socket> socket = Socket::CreateSocket (GetNode (), tid);
 	socket->Bind();
-	std::string file_name_local;
-	file_name_local.assign(file_name);
-	//Callback<void, Ptr<Socket> > cb;
-	//cb = MakeCallback(&GnutellaApp::FastQueryDownloadConnectionFailed( file_name_local, this));
-	// Connect callbacks
-//	MyCallback * cb = new MyCallback(file_name);
-	//m_pendingConnectCallbacks.push_back(cb);
+
+
 	socket->SetConnectCallback (
 			MakeCallback (&GnutellaApp::FastQueryDownloadConnectionSucceeded, this),
-			MakeCallback (&GnutellaApp::FastQueryDownloadConnectionFailed, this, file_name_local));
-			//MakeCallback(&MyCallback::ConnectFailed, cb));
+			MakeCallback (&GnutellaApp::FastQueryDownloadConnectionFailed , this ));
+
 
     // Close callbacks
     socket->SetCloseCallbacks (
@@ -854,11 +934,20 @@ void GnutellaApp::DownloadConnectionFailed(Ptr<Socket> socket)
     m_connected_peers.RemovePeer(p);
 }
 
-void GnutellaApp::FastQueryDownloadConnectionFailed( std::string file_name, Ptr<Socket> socket)
+void GnutellaApp::FastQueryDownloadConnectionFailed( Ptr<Socket> socket)
 {
     LogMessage("Failed to Connect (Download)");
 
     Peer *p = m_connected_peers.GetPeerBySocket(socket);
+
+    // Get the filename/index
+    int index = m_downloads.GetIndex(p);
+    // Send file download request
+    std::string file_name;
+    if (index != -1)
+    {
+    	file_name = m_downloads.GetFileName(p);
+    }
     m_connected_peers.RemovePeer(p);
 
     //pop from response queue and send download request
@@ -955,7 +1044,7 @@ void GnutellaApp::SendQuery(std::string filename)
 		// A new descriptor is generated for each query;
 		// because descriptor ID needs to be unique
 
-    	//first send a fast query to all connected peers
+    	//first send a fast query to all connected peers . 1->fast query
 		QueryDescriptor *q = new QueryDescriptor(GetNode(), 0, filename, 1);
  
         // Update the query response measurements

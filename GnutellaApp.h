@@ -108,7 +108,8 @@ class GnutellaApp: public Application
            file_name);
 
         void SendFileDownloadResponse(Peer *p, ns3::Buffer::Iterator it);
-    	
+        void SendFileDownloadResponseError(Peer *p, std::string fileName);
+
     	
     	// Initalize a connection to a peer
     	Ptr<Socket> ConnectToPeer(Address from, bool dl = false);
@@ -132,7 +133,7 @@ class GnutellaApp: public Application
     	void HandlePeerClose (Ptr<Socket>);
 		void HandlePeerError (Ptr<Socket>);
 		void FastQueryDownloadConnectionSucceeded(Ptr<Socket> socket);
-		void FastQueryDownloadConnectionFailed( std::string file_name, Ptr<Socket> socket);
+		void FastQueryDownloadConnectionFailed( Ptr<Socket> socket);
     	// Generate some files
     	void GenerateFiles();
     	

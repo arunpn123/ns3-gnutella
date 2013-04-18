@@ -20,3 +20,7 @@ CacheEntry::CacheEntry(QueryHitDescriptor * desc)
 }
 
 
+CacheEntry::~CacheEntry()
+{
+	//intentionally blank a naangalum uduvom
+}
