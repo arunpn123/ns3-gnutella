@@ -110,7 +110,7 @@ class Descriptor
         DescriptorType GetType(){ return type_;}
         DescriptorHeader GetHeader() const { return header_;}
 
-        ~Descriptor();
+        virtual ~Descriptor();
 
     protected:
         void SerializeHeader(ns3::Buffer::Iterator start);
@@ -134,7 +134,7 @@ class PingDescriptor : public Descriptor
         PingDescriptor(DescriptorHeader header);
         PingDescriptor(ns3::Ptr<ns3::Node> n);
         PingDescriptor();
-        ~PingDescriptor();
+        virtual ~PingDescriptor();
     protected:
         static const uint32_t PAYLOAD_LENGTH = 0;
 };
@@ -164,7 +164,7 @@ class PongDescriptor : public Descriptor
                 ns3::Ipv4Address ip_address, 
                 uint32_t files_shared, 
                 uint32_t kb_shared);
-        ~PongDescriptor();
+        virtual ~PongDescriptor();
 };
 
 class QueryDescriptor : public Descriptor
@@ -191,7 +191,7 @@ public:
             uint16_t min_speed, 
             std::string search_criteria);
 	QueryDescriptor(ns3::Ptr<ns3::Node> n, uint16_t min_speed, std::string filename, uint16_t query_type);
-	~QueryDescriptor();
+	virtual ~QueryDescriptor();
 };
 
 class QueryHitDescriptor : public Descriptor
@@ -234,7 +234,7 @@ public:
 	QueryHitDescriptor(DescriptorHeader header, uint8_t num_hits, 
 		uint16_t port, ns3::Ipv4Address ip_address, uint32_t speed, 
 		Result *result_set, uint8_t *servant_identifier);
-	~QueryHitDescriptor();
+	virtual ~QueryHitDescriptor();
 };
 
 class PushDescriptor : public Descriptor
@@ -259,7 +259,7 @@ public:
 		return file_name_;
 	}
     FastQueryMissDescriptor(DescriptorHeader id, std::string file_name);
-	~FastQueryMissDescriptor();
+	virtual ~FastQueryMissDescriptor();
 };
 
 

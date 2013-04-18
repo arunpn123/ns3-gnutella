@@ -43,13 +43,14 @@ class CacheEntry
 	std::string file_name_;
 
 
-	static CacheEntry  Create(QueryHitDescriptor* desc);
-	CacheEntry()
-	{
+	//static CacheEntry  Create(QueryHitDescriptor* desc);
+	//CacheEntry()
+	//{
 
-	}
+	//}
+	CacheEntry();
 	CacheEntry(QueryHitDescriptor *desc);
-	~CacheEntry();
+	//~CacheEntry();
 };
 //planning to use the cache as a store for <filename, CachEntry> pairs
 

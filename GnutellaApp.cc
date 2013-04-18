@@ -601,6 +601,9 @@ void GnutellaApp::HandleQuery(QueryDescriptor* desc, Peer* p)
 			// create desc
 			QueryHitDescriptor *qh_desc = new QueryHitDescriptor(header, 1,
 				entry.port_, entry.ip_address_, DEFAULT_SPEED, result_set, 0);
+		//TODO : check with Vimal
+			qh_desc->query_hit_type_ = 1;
+
 			Send(qh_desc, p);
 			LogMessage("Sending FAST_QUERY_HIT");
 			delete [] result_set;
@@ -608,8 +611,12 @@ void GnutellaApp::HandleQuery(QueryDescriptor* desc, Peer* p)
 		else
 		{
 			//need to write the Fast query failure descriptor and send it
-			FastQueryMissDescriptor* miss_desc = FastQueryMissDescriptor::Create(desc->GetHeader(), desc->search_criteria_);
-			Send((Descriptor*)miss_desc, p);
+//			Descriptor* parent_desc;
+//			FastQueryMissDescriptor miss_desc= FastQueryMissDescriptor::Create(desc->GetHeader(), desc->search_criteria_);
+//			parent_desc = &miss_desc;
+
+			FastQueryMissDescriptor * miss_desc = new FastQueryMissDescriptor(desc->GetHeader(), desc->search_criteria_);
+			Send(miss_desc, p);
 		}
 	}
 	else
@@ -654,7 +661,9 @@ void GnutellaApp::HandleQueryHit(QueryHitDescriptor *desc)
 			if (desc->GetTtl() > 0)
 			{
 				//add entry to cache
-				CacheEntry entry= CacheEntry::Create(desc);
+			//	CacheEntry entry= CacheEntry::Create(desc);
+				CacheEntry  entry(desc);
+
 				cache.put(desc->result_set_->shared_file_name, entry);
 				Send(desc, r->GetPeer());
 			}

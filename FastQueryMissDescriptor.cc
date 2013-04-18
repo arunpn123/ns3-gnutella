@@ -19,3 +19,20 @@ FastQueryMissDescriptor::Create(DescriptorHeader h, std::string file_name)
 {
     return new FastQueryMissDescriptor(h, file_name);
 }
+
+FastQueryMissDescriptor::~FastQueryMissDescriptor()
+{
+
+}
+uint32_t
+FastQueryMissDescriptor::GetSerializedSize()
+{
+    // header + min_speed + string + null terminator
+    return 23+file_name_.size()+1;
+}
+
+void
+FastQueryMissDescriptor::Serialize(ns3::Buffer::Iterator start)
+{
+    SerializeHeader(start);
+}
