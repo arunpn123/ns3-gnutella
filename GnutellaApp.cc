@@ -1081,9 +1081,11 @@ void GnutellaApp::SendQuery(std::string filename)
     //create a response queue for this file and add it to the node's list of response queues
 
     int neighbors_count= m_connected_peers.GetSize();
+    std::queue<QueryHitDescriptor> queue;
 
     fastquery_requestcount.insert(std::pair<std::string, int>(filename, neighbors_count));
     fastquery_responsecount.insert(std::pair<std::string, int>(filename, 0));
+    fastqueryhit_responselist.insert(std::pair<std::string, std::queue<QueryHitDescriptor> >(filename, queue));
 
     for (int i = 0; i < neighbors_count; i++)
     {
