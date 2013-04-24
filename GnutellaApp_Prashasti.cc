@@ -563,15 +563,7 @@ void GnutellaApp::HandleQuery(QueryDescriptor* desc, Peer* p)
 
 void GnutellaApp::HandleQueryHit(QueryHitDescriptor *desc)
 {
-    // increment the number of "raw" query hits received
-    // this just tracks exactly the number of times we receive a query hit
-    // from anywhere in the network
     m_stats.incr("query_hit");
-
-//    std::cout << m_node_id << ": got query hit: "
-//              << "num_hits=" << desc->GetNumHits() << ", "
-//              << "port=" << desc->GetPort() << ", "
-//              << "ip=" << desc->GetIp() << "\n";
 
     LogMessage("Received QUERY_HIT");
     // Received QueryHit
@@ -748,7 +740,9 @@ void GnutellaApp::HandlePeerClose (Ptr<Socket> socket)
  
 void GnutellaApp::HandlePeerError (Ptr<Socket> socket)
 {
-    m_stats.incr("peer_error");
+  if(isSameIpAddress(peeraddr, m_local))
+        m_stats.incr("connect_to_self");
+  m_stats.incr("peer_error");
     LogMessage("Peer Error");
 //  NS_LOG_INFO ("GnutellaApp: peerError");
     // Remove peer from connected sockets list

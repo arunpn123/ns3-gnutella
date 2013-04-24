@@ -5,6 +5,7 @@
 #include "ns3/point-to-point-module.h"
 #include "ns3/applications-module.h"
 
+#include <assert.h>
 #include <iostream>
 #include <utility>
 #include <sstream>
@@ -17,6 +18,13 @@
 using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE ("GnutellaApp");
+
+bool isSameIpAddress(const Address & addr1, const Address & addr2)
+{
+    InetSocketAddress inet1 = InetSocketAddress::ConvertFrom(addr1);
+    InetSocketAddress inet2 = InetSocketAddress::ConvertFrom(addr2);
+    return (inet1.GetIpv4() == inet2.GetIpv4());
+}
 
 GnutellaApp::GnutellaApp(Address addr, Address boots)
     :m_requests(ns3::Seconds(SECONDS_REQUEST_TIMEOUT))
@@ -35,23 +43,31 @@ GnutellaApp::GnutellaApp(Address addr, Address boots)
 	GetServentID(a.GetIpv4(), m_servent_id);
 	
 	
-	// Generate some files
-	this->GenerateFiles();
+ // Generate some files
+//    	this->GenerateFiles();
+       m_max_files = 10;
+       m_uniform_rng = CreateObject<UniformRandomVariable>();
 	
 	NS_LOG_INFO ("Peer created: " << a.GetIpv4() << ":" << a.GetPort() << " sid: " << m_servent_id);
 }
 
 GnutellaApp::~GnutellaApp()
 {
-	for (size_t i = 0; i < m_peers.GetSize(); i++)
-	{
-		delete m_peers.GetPeer(i);
-	}
+    for (size_t i = 0; i < m_peers.GetSize(); i++)
+    {
+        delete m_peers.GetPeer(i);
+    }
 }
 
 void GnutellaApp::StartApplication()
 {
-    
+		
+		myqueries=0;
+    m_node_id = GetNode()->GetId();
+    m_stats.set_id(m_node_id);
+
+    GenerateFiles(m_max_files);
+
     TypeId tid = TypeId::LookupByName ("ns3::TcpSocketFactory");
 
     m_pingtimer.SetFunction(&GnutellaApp::PingPeers, this);
@@ -63,14 +79,17 @@ void GnutellaApp::StartApplication()
     m_pingtimer.Schedule(Seconds(10));
 
     m_querytimer.SetFunction(&GnutellaApp::SendQuery, this);
-	m_querytimer.SetArguments(std::string("foo"));
-    m_querytimer.Schedule(Seconds(11)+Seconds(10*abs(NormalVariable().GetValue())));
+//    m_querytimer.SetArguments(std::string("foo"));
+    m_querytimer.SetArguments(getRandomFilename());
+    // blaub
+    m_querytimer.Schedule(Seconds(10));
+///    m_querytimer.Schedule(Seconds(11)+Seconds(10*abs(NormalVariable().GetValue())));
 //    m_querytimer.Schedule(Seconds(15));
 
     //Open socket for listening
     m_socket = Socket::CreateSocket (GetNode (), tid);    
     m_socket->Bind (InetSocketAddress(Ipv4Address::GetAny(), DEFAULT_LISTENING_PORT));
-	m_socket->Listen ();
+    m_socket->Listen ();
 
     m_socket->SetAcceptCallback(MakeNullCallback<bool, Ptr<Socket>, 
             const Address & >(),
@@ -95,27 +114,28 @@ void GnutellaApp::StopApplication()
 {
     //Remove ping timer event from the simulation
     m_pingtimer.Cancel();
-
-	Peer *p;
-	// Close all connected sockets
-	for (size_t i = 0; i < m_connected_peers.GetSize(); i++)
-	{
-		p = m_connected_peers.GetPeer(i);
-		if (p != NULL)
-			p->GetSocket()->Close();
-	}
+    // blaub
+    m_querytimer.Cancel();
+    Peer *p;
+    // Close all connected sockets
+    for (size_t i = 0; i < m_connected_peers.GetSize(); i++)
+    {
+        p = m_connected_peers.GetPeer(i);
+        if (p != NULL)
+            p->GetSocket()->Close();
+    }
 
      //LogAverageQueryResponseTime();
 }
 
 void GnutellaApp::SetInitPeer(Address peer_addr)
 {
-	// Add inital peer to PeerContainer
-	if (!peer_addr.IsInvalid())
-	{
-		Peer *p = new Peer(peer_addr);
-		m_peers.AddPeer(p);
-	}
+    // Add inital peer to PeerContainer
+    if (!peer_addr.IsInvalid())
+    {
+        Peer *p = new Peer(peer_addr);
+        m_peers.AddPeer(p);
+    }
 }
 
 //socket contains a new socket reserved for this connection
@@ -126,49 +146,49 @@ void GnutellaApp::AcceptPeerConnection(Ptr<Socket> socket, const Address& from)
     socket->SetRecvCallback (MakeCallback (&GnutellaApp::HandleRead, this));
     // Close callbacks
     socket->SetCloseCallbacks (
-		MakeCallback (&GnutellaApp::HandlePeerClose, this),
-		MakeCallback (&GnutellaApp::HandlePeerError, this));
+        MakeCallback (&GnutellaApp::HandlePeerClose, this),
+        MakeCallback (&GnutellaApp::HandlePeerError, this));
 }
 
 void GnutellaApp::AcceptGnutellaConnection(Ptr<Socket> socket, Address from)
 {
     LogMessage("Received Gnutella Connect Request");
 
-	// Accept a connection - send back a OK msg
-	Ptr<Packet> packet = Create<Packet> ((const uint8_t*)MSG_CONNECT_OK, 13);
-	socket->Send(packet);
-	
-	// Add peer to the ConnectedPeerContainer
+    // Accept a connection - send back a OK msg
+    Ptr<Packet> packet = Create<Packet> ((const uint8_t*)MSG_CONNECT_OK, 13);
+    socket->Send(packet);
+    
+    // Add peer to the ConnectedPeerContainer
     AddConnectedPeer(from, socket);
-}	
+}    
 
 
 void GnutellaApp::HandleRead (Ptr<Socket> socket)
 {
 //    NS_LOG_INFO ("GnutellaApp: " << this << "  Packet Received");
-  	Ptr<Packet> packet;
-  	Address from;
+      Ptr<Packet> packet;
+      Address from;
 
-  	while (packet = socket->RecvFrom (from))
+      while (packet = socket->RecvFrom (from))
     {
       if (packet->GetSize () > 0)
-        {	
-         	uint8_t * buffer  = new uint8_t[packet->GetSize() + 1];
-         	packet->CopyData(buffer, packet->GetSize());
+        {    
+             uint8_t * buffer  = new uint8_t[packet->GetSize() + 1];
+             packet->CopyData(buffer, packet->GetSize());
             buffer[packet->GetSize()] = 0;
 
             Peer *p = m_connected_peers.GetPeerBySocket(socket);
             if(p != NULL)
             {
                 if (strncmp((const char *) buffer, MSG_HTTP_OK, MSG_HTTP_OK_SIZE) == 0)
-				{
-					ns3::Buffer tb;
-					tb.AddAtStart(packet->GetSize() + 1);
-					ns3::Buffer::Iterator ti = tb.Begin();
-					ti.Write(buffer, packet->GetSize());
-					ti = tb.Begin();
-					HandleFileDownloadResponse(p, ti);
-				}
+                {
+                    ns3::Buffer tb;
+                    tb.AddAtStart(packet->GetSize() + 1);
+                    ns3::Buffer::Iterator ti = tb.Begin();
+                    ti.Write(buffer, packet->GetSize());
+                    ti = tb.Begin();
+                    HandleFileDownloadResponse(p, ti);
+                }
                 HandlePeerMessage(p, buffer);
             }
             else
@@ -186,17 +206,19 @@ void GnutellaApp::HandleRead (Ptr<Socket> socket)
                 }
             }
             
-			if (strncmp((const char *) buffer, MSG_HTTP_GET, MSG_HTTP_GET_SIZE) == 0)
-			{
-				if (p == NULL)
-					p = AddConnectedPeer(from, socket);
-				ns3::Buffer tb;
-				tb.AddAtStart(packet->GetSize() + 1);
-				ns3::Buffer::Iterator ti = tb.Begin();
-				ti.Write((uint8_t const *)buffer, (uint32_t) packet->GetSize() + 1);
-				ti = tb.Begin();
-				HandleFileDownloadRequest(p, ti);
-			}
+            if (strncmp((const char *) buffer, MSG_HTTP_GET, MSG_HTTP_GET_SIZE) == 0)
+            {
+                if (p == NULL)
+                    p = AddConnectedPeer(from, socket);
+                ns3::Buffer tb;
+                tb.AddAtStart(packet->GetSize() + 1);
+                ns3::Buffer::Iterator ti = tb.Begin();
+                ti.Write((uint8_t const *)buffer, (uint32_t) packet->GetSize() + 1);
+                ti = tb.Begin();
+                HandleFileDownloadRequest(p, ti);
+            }
+            
+            
 
             delete [] buffer;
         }
@@ -272,10 +294,11 @@ void GnutellaApp::HandleFileDownloadRequest(Peer *p, ns3::Buffer::Iterator it)
 
 void GnutellaApp::HandleFileDownloadResponse(Peer *p, ns3::Buffer::Iterator it)
 {
+    m_stats.incr("file_download_res");
 
     LogMessage("Received File");
     if (it.GetSize() <= 92)
-		return;
+        return;
     std::string filename;
     ns3::Buffer data;
     uint8_t *header_buffer = new uint8_t[20];
@@ -400,11 +423,13 @@ void GnutellaApp::HandleFileDownloadResponse(Peer *p, ns3::Buffer::Iterator it)
 void GnutellaApp::SendFileDownloadRequest(Peer *p, uint32_t file_index,
     std::string file_name)
 {
-	std::stringstream log;
-	log << "Sending File Download Request to " << 
-		(InetSocketAddress::ConvertFrom(p->GetAddress())).GetIpv4();
-	LogMessage(log.str().c_str());
-	
+    m_stats.incr("file_download_req");
+
+    std::stringstream log;
+    log << "Sending File Download Request to " << 
+        (InetSocketAddress::ConvertFrom(p->GetAddress())).GetIpv4();
+    LogMessage(log.str().c_str());
+    
     std::stringstream ss;
     ss << "GET /get/" << file_index << "/" << file_name << "/ HTTP/1.0\r\n";
     ss << "User-Agent: Gnutella/0.4\r\n";
@@ -435,7 +460,7 @@ void GnutellaApp::SendFileDownloadResponse(Peer *p, ns3::Buffer::Iterator it)
     uint8_t *temp = new uint8_t[it.GetSize()];
     it.Read(temp, it.GetSize());
     std::string strbuf1 = (const char *) temp;
-	std::string strbuf = ss.str() + strbuf1;
+    std::string strbuf = ss.str() + strbuf1;
     uint8_t *buffer = (uint8_t *) strbuf.c_str();
     
     if (!m_connected_peers.SearchPeer(p))
@@ -477,7 +502,7 @@ void GnutellaApp::HandlePing (PingDescriptor *desc, Peer *p)
 {
     LogMessage("Received PING");
 
-	// Respond with pong
+    // Respond with pong
     PongDescriptor * pong_desc = new PongDescriptor(
             desc->GetHeader().descriptor_id, m_local, 
             m_files.GetNumberOfFiles(),
@@ -486,27 +511,27 @@ void GnutellaApp::HandlePing (PingDescriptor *desc, Peer *p)
     LogMessage("Sending PONG");
     Send(pong_desc, p);
 
-	// Decrement ping ttl, increment hops
-	desc->Hop();
-	
-	Request *r = m_requests.GetRequestById(desc->GetHeader().descriptor_id);
-	
-	// Make sure TTL != 0 first.
-	if (desc->GetTtl() > 0 && !(r != NULL && r->GetType() == desc->GetType()) )
-	{
-		for (size_t i = 0; i < m_connected_peers.GetSize(); i++)
-		{
-			if (m_connected_peers.GetPeer(i) != p)
+    // Decrement ping ttl, increment hops
+    desc->Hop();
+    
+    Request *r = m_requests.GetRequestById(desc->GetHeader().descriptor_id);
+    
+    // Make sure TTL != 0 first.
+    if (desc->GetTtl() > 0 && !(r != NULL && r->GetType() == desc->GetType()) )
+    {
+        for (size_t i = 0; i < m_connected_peers.GetSize(); i++)
+        {
+            if (m_connected_peers.GetPeer(i) != p)
             {
-				Send(desc, m_connected_peers.GetPeer(i));
+                Send(desc, m_connected_peers.GetPeer(i));
                 LogMessage("Forwarding PING");
             }
-		}
+        }
 
         m_requests.AddRequest(new Request(desc, p));
 //        NS_LOG_INFO ("GnutellaApp: " << ns3::InetSocketAddress::ConvertFrom(m_local).GetIpv4() << " Requests Stored: " << m_requests.GetSize());
-		
-	}
+        
+    }
 
 }
 
@@ -516,20 +541,20 @@ void GnutellaApp::HandlePong (PongDescriptor *desc)
     sa << "Received PONG for: " << desc->ip_address_;
     LogMessage(sa.str().c_str());
 
-	InetSocketAddress addr(desc->ip_address_, desc->port_);
-	Peer *p = new Peer(addr);
-	
-	if(InetSocketAddress::ConvertFrom(m_local).GetIpv4() != desc->ip_address_ && !m_peers.SearchPeer(p))
-		m_peers.AddPeer(p);
-	else
-		delete p;
+    InetSocketAddress addr(desc->ip_address_, desc->port_);
+    Peer *p = new Peer(addr);
+    
+    if(InetSocketAddress::ConvertFrom(m_local).GetIpv4() != desc->ip_address_ && !m_peers.SearchPeer(p))
+        m_peers.AddPeer(p);
+    else
+        delete p;
 
 //    std::stringstream ss;
 //    ss << "Peers Stored:" << m_peers.GetSize();
 //    LogMessage(ss.str().c_str());
-	
-	// Forward pong to the node that sent you the ping request with the
-	// same ID, if one is found
+    
+    // Forward pong to the node that sent you the ping request with the
+    // same ID, if one is found
     Request * r = m_requests.GetRequestById(desc->GetHeader().descriptor_id);
     if(r != NULL)
     {
@@ -541,23 +566,34 @@ void GnutellaApp::HandlePong (PongDescriptor *desc)
         }
         m_requests.RemoveRequest(r);
     }
-	
-	// frees memory.
-	delete desc;
+    
+    // frees memory.
+    delete desc;
 }
 
 void GnutellaApp::HandleQuery(QueryDescriptor* desc, Peer* p)
 {
+    // blaub: DONT forward your own query
+    bool hit_mine = false;
+    
+    Request *r = m_requests.GetRequestById(desc->GetHeader().descriptor_id);
+    if(r && r->IsSelf())
+    {
+        m_stats.incr("query_routing_loop");
+        return;
+    }
+
+    m_stats.incr("query_recieved");
 	LogMessage("Received QUERY");
 	// For any query, first search if file is present in filesystem, then search in cache, then handle other conditions
     LogMessage(("QUERY Search Criteria: " + desc->GetSearchCriteria()).c_str());
-	std::vector<File*> result = m_files.GetFileByName(desc->GetSearchCriteria());
-	if (result.size() > 0) // Files found
-	{
-		// Create a new QueryHit descriptor
-		Descriptor::DescriptorHeader header;
-		// Store header fields
-		// QueryHit's id is the same as the query's id
+    std::vector<File*> result = m_files.GetFileByName(desc->GetSearchCriteria());
+    if (result.size() > 0) // Files found
+    {
+        // Create a new QueryHit descriptor
+        Descriptor::DescriptorHeader header;
+        // Store header fields
+        // QueryHit's id is the same as the query's id
         header.descriptor_id = desc->GetHeader().descriptor_id;
 		header.payload_descriptor = Descriptor::QUERYHIT;
 		header.ttl = DEFAULT_TTL;
@@ -594,7 +630,8 @@ void GnutellaApp::HandleQuery(QueryDescriptor* desc, Peer* p)
 			a.GetPort(), a.GetIpv4(), DEFAULT_SPEED, result_set, m_servent_id);
 	
 		Send(qh_desc, p);
-		
+		//blaub
+		hit_mine = true;
 		LogMessage("Sending QUERY_HIT");
 		
 		delete [] result_set;
@@ -656,8 +693,15 @@ void GnutellaApp::HandleQuery(QueryDescriptor* desc, Peer* p)
 	}
 	else
 	{//slow query
+	    // (a bad assumption?)
+	    if(hit_mine)
+	    {
+		m_stats.incr("hit_mine");
+		return;
+	    }
+
 		LogMessage("Received SLOWQUERY");
-		// Decrement ping ttl, increment hops
+				// Decrement ping ttl, increment hops
 		desc->Hop();
 		Request *r = m_requests.GetRequestById(desc->GetHeader().descriptor_id);
 		// Make sure TTL != 0 first.
@@ -670,6 +714,7 @@ void GnutellaApp::HandleQuery(QueryDescriptor* desc, Peer* p)
 				{
 					Send(desc, m_connected_peers.GetPeer(i));
 					LogMessage("Forwarding QUERY");
+					m_stats.incr("query_forwarded");
 				}
 			}
 
@@ -680,9 +725,12 @@ void GnutellaApp::HandleQuery(QueryDescriptor* desc, Peer* p)
 	
 }
 
+
+
 void GnutellaApp::HandleQueryHit(QueryHitDescriptor *desc)
 {
 	LogMessage("Received QUERY_HIT");
+    m_stats.incr("query_hit");
 	// Received QueryHit
 	// Is it for me?
 	// Forward it if no
@@ -699,6 +747,7 @@ void GnutellaApp::HandleQueryHit(QueryHitDescriptor *desc)
 				CacheEntry  entry(desc);
 				cache.put(desc->result_set_->shared_file_name, entry);
 				Send(desc, r->GetPeer());
+                m_stats.incr("query_hit_forward");
 				LogMessage("Adding Entry to Cache");
 			}
 			m_requests.RemoveRequest(r);
@@ -706,6 +755,7 @@ void GnutellaApp::HandleQueryHit(QueryHitDescriptor *desc)
 		else if (r->IsSelf()) // it's for me
 		{
 			// Update the query response measurements
+            m_stats.incr("query_hits_for_me");
 			DescriptorId desc_id = desc->GetHeader().descriptor_id;
             m_query_responses.Update(desc_id);
             
@@ -855,7 +905,9 @@ void GnutellaApp::Send(Descriptor *desc, Peer *p)
 }
 
 Ptr<Socket> GnutellaApp::ConnectToPeer(Address peeraddr, bool dl)
-{
+{if(isSameIpAddress(peeraddr, m_local))
+        m_stats.incr("connect_to_self");
+
 	TypeId tid = TypeId::LookupByName ("ns3::TcpSocketFactory");
 	Ptr<Socket> socket = Socket::CreateSocket (GetNode (), tid);
 	socket->Bind();
@@ -1036,6 +1088,10 @@ void GnutellaApp::HandlePeerClose (Ptr<Socket> socket)
  
 void GnutellaApp::HandlePeerError (Ptr<Socket> socket)
 {
+if(isSameIpAddress(peeraddr, m_local))
+        m_stats.incr("connect_to_self");
+  m_stats.incr("peer_error");
+
   LogMessage("Peer Error");
 //  NS_LOG_INFO ("GnutellaApp: peerError");
   // Remove peer from connected sockets list
@@ -1058,6 +1114,7 @@ Peer * GnutellaApp::AddConnectedPeer(Address from, Ptr<Socket> socket)
 //    ss << "Connected peers:" << m_connected_peers.GetSize();
 //    LogMessage(ss.str().c_str());
     
+    m_stats.max("connected_peers_max", m_connected_peers.GetSize());
     return p;
 }
 
@@ -1077,6 +1134,16 @@ void GnutellaApp::PingPeers()
 void GnutellaApp::SendQuery(std::string filename)
 {
     LogMessage(("Sending FastQuery: " + filename).c_str());
+// blaub: if i already have this file, don't query (??)
+    std::vector<File *> have = m_files.GetFileByName(filename);
+
+    m_stats.incr("send_query");
+
+    std::ostringstream lg;
+    lg << Simulator::Now() << ": sending query: " << filename;
+    //LogMessage(lg.str().c_str());
+    std::cout << lg.str() << "\n";
+
 
     //create a response queue for this file and add it to the node's list of response queues
 
@@ -1104,19 +1171,64 @@ void GnutellaApp::SendQuery(std::string filename)
         // self = true, peer = NULL
         m_requests.AddRequest(new Request(q, NULL, true));
         
+	        if(isSameIpAddress(m_connected_peers.GetPeer(i)->GetAddress(), m_local))
+            m_stats.incr("send_query_to_self");
+
         Send(q, m_connected_peers.GetPeer(i));
-	}
+        
+        InetSocketAddress who = InetSocketAddress::ConvertFrom(m_connected_peers.GetPeer(i)->GetAddress());
+        m_stats.incr("send_query_actual");
+        std::cout << "node " << m_node_id << ": send_query_actual to "
+                  << m_connected_peers.GetPeer(i)->GetAddress() << " - " << who.GetIpv4() << ":" << who.GetPort() << "\n";
+    }
+
+    m_querytimer.SetArguments(getRandomFilename());
+    if(myqueries<9)
+    {
+		myqueries++;
+	    	std::cout << "Node: " << m_node_id << " Scheduling query no." << myqueries << "\n";
+	    	m_querytimer.Schedule(Seconds(10.0));
+ }
+}
+void GnutellaApp::GenerateFiles(unsigned int num_files)
+{
+////
+////    // TODO
+////    ns3::Buffer buf;
+////    File* fasdf = new File("foo", buf);
+////    m_files.AddFile(fasdf);
+////
+////    return;
+////
+
+    // blaub
+    uint32_t node_id = m_node_id; //GetNode()->GetId();
+    for(unsigned int i = 0; i < num_files; ++i)
+    {
+        std::ostringstream ss;
+        ss << "Node" << node_id << "File" << i;
+        ns3::Buffer buf;
+        File * f = new File(ss.str(), buf);
+        m_files.AddFile(f);
+    }
+
+//    ns3::Buffer buf;
+////        NS_LOG_INFO(buf.GetSize());
+//    File* f = new File("foo", buf);
+//    File* f2 = new File("fooobar", buf);
+//    m_files.AddFile(f);
+//    m_files.AddFile(f2);
+
+    // blaub
+//    std::cout << "node " << node_id << " stores these files:\n";
+//    std::vector<File *> filelist = m_files.GetAllFiles();
+//    for(unsigned int i = 0; i < filelist.size(); ++i)
+//    {
+//        File * f = filelist[i];
+//        std::cout << "  " << f->GetFileName() << "\n";
+//    }
 }
 
-void GnutellaApp::GenerateFiles()
-{
-	ns3::Buffer buf;
-//        NS_LOG_INFO(buf.GetSize());
-	File* f = new File("foo", buf);
-	File* f2 = new File("fooobar", buf);
-	m_files.AddFile(f);
-	m_files.AddFile(f2);
-}
 
 void GnutellaApp::GetServentID(Ipv4Address ipv4, uint8_t *sid)
 {
@@ -1148,4 +1260,21 @@ void GnutellaApp::LogAverageQueryResponseTime()
 void GnutellaApp::LogMessage(const char * message)
 {
         NS_LOG_INFO ("GnutellaApp: " << ns3::InetSocketAddress::ConvertFrom(this->m_local).GetIpv4() << " " << message);
+}
+std::string GnutellaApp::getRandomFilename() const
+{
+    uint32_t my_id = GetNode()->GetId();
+    uint32_t max_node_id = NodeList::GetNNodes() - 1;
+
+    uint32_t target_node = my_id;
+    while(target_node == my_id)
+        target_node = m_uniform_rng->GetInteger(0, max_node_id);
+
+    assert(target_node != my_id);
+
+    uint32_t file_id = m_uniform_rng->GetInteger(0, m_max_files);
+    char buf[1024];
+    snprintf(buf, 1024, "Node%dFile%d", target_node, file_id);
+
+    return std::string(buf);
 }
