@@ -21,7 +21,8 @@ CacheEntry::CacheEntry(QueryHitDescriptor * desc)
 		// Size = num_hits
 	file_index_= desc->result_set_->file_index;
 	file_size_= desc->result_set_->file_size;
-	std::strcpy(file_name_, desc->result_set_->shared_file_name);
+
+	file_name_.assign(desc->result_set_->shared_file_name);
 }
 
 
