@@ -35,15 +35,16 @@ bool FileContainer::RemoveFile(File* file)
 std::vector<File*> FileContainer::GetFileByName(std::string filename)
 {
 	std::vector<File*> result;
-	size_t found = std::string::npos;
+	
 	for (size_t i = 0; i < file_vector_.size(); i++)
 	{
 //        NS_LOG_INFO ("Filename: " << file_vector_[i]->GetFileName().size());
 //        NS_LOG_INFO ("Filename0: " << filename.size());
-		found = file_vector_[i]->GetFileName().find(filename);
+		if(file_vector_[i]->GetFileName() == filename){
 //        NS_LOG_INFO ("Found: " << found);
-		if (found != std::string::npos) // found!
 			result.push_back(file_vector_[i]);
+			break;
+		}
 	}
 	return result;
 }
