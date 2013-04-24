@@ -1,4 +1,4 @@
-cscope 15 $HOME/tarballs/ns-allinone-3.15/ns-3.15/scratch/ns3-gnutella-master               0000128223
+cscope 15 $HOME/tarballs/ns-allinone-3.15/ns-3.15/scratch/ns3-gnutella-master               0000129507
 	@Cache.cc
 
 7 
@@ -3389,18 +3389,6 @@ Fže
 »suÉ
 ;
 
-38 
-size_t
- 
-	gfound
- = 
-¡d
-::
-¡ršg
-::
-Åos
-;
-
 39 
 size_t
  
@@ -3411,31 +3399,17 @@ size_t
 size
 (); i++)
 
-43 
-	gfound
- = 
-fže_veùÜ_
+43 if(
+	gfže_veùÜ_
 [
 i
 ]->
 G‘FžeName
-().
-fšd
-(
+(è=ð
 fž’ame
-);
+){
 
-45 ià(
-	gfound
- !ð
-¡d
-::
-¡ršg
-::
-Åos
-)
-
-46 
+45 
 »suÉ
 .
 push_back
@@ -3445,11 +3419,11 @@ fže_veùÜ_
 i
 ]);
 
-48  
+49  
 	g»suÉ
 ;
 
-51 
+52 
 	g¡d
 ::
 veùÜ
@@ -3461,15 +3435,15 @@ FžeCÚš”
 	$G‘AÎFžes
 ()
 
-53  
+54  
 fže_veùÜ_
 ;
 
-54 
+55 
 	}
 }
 
-56 
+57 
 	gFžeCÚš”
 ::
 	$G‘IndexByFže
@@ -3479,7 +3453,7 @@ Fže
 f
 )
 
-58 
+59 
 size_t
  
 i
@@ -3489,7 +3463,7 @@ fže_veùÜ_
 	`size
 (); i++)
 
-60 ià(
+61 ià(
 fže_veùÜ_
 [
 i
@@ -3497,15 +3471,15 @@ i
 f
 )
 
-61  
+62  
 i
 ;
 
-64 
+65 
 	}
 }
 
-66 
+67 
 Fže
 * 
 	gFžeCÚš”
@@ -3517,7 +3491,7 @@ size_t
 šdex
 )
 
-68 ià(
+69 ià(
 šdex
  >ð
 fže_veùÜ_
@@ -3525,17 +3499,17 @@ fže_veùÜ_
 	`size
 ())
 
-69  
+70  
 NULL
 ;
 
-70  
+71  
 fže_veùÜ_
 [
 šdex
 ];
 
-71 
+72 
 	}
 }
 
@@ -17917,6 +17891,340 @@ rq_add»ss_m­_
 	}
 }
 
+	@StatCollector.hh
+
+1 #iâdeà
+__STAT_COLLECTOR_HH__
+
+
+2 
+	#__STAT_COLLECTOR_HH__
+
+
+	)
+
+4 
+	~<m­
+>
+
+5 
+	~<¡ršg
+>
+
+7 þas 
+	cStCÞËùÜ
+
+
+9 
+	mpublic
+:
+
+10 
+	$£t_id
+(
+ušt32_t
+ 
+id
+)
+
+11 { 
+m_id
+ = 
+id
+; }
+
+13 
+	`šü
+(cÚ¡ 
+¡d
+::
+¡ršg
+ & 
+key
+)
+
+15 
+M­Ty³
+::
+cÚ¡_™”©Ü
+ 
+™
+ = 
+m_¡©s
+.
+	`fšd
+(
+key
+);
+
+16 if(
+™
+ =ð
+m_¡©s
+.
+	`’d
+())
+
+17 
+m_¡©s
+[
+key
+] = 0;
+
+19 ++
+m_¡©s
+[
+key
+];
+
+20 
+	}
+}
+
+22 
+max
+(cÚ¡ 
+¡d
+::
+¡ršg
+ & 
+key
+, 
+v®
+)
+
+24 
+	gM­Ty³
+::
+cÚ¡_™”©Ü
+ 
+™
+ = 
+m_¡©s
+.
+fšd
+(
+key
+);
+
+25 if(
+	g™
+ =ð
+m_¡©s
+.
+’d
+())
+
+26 
+m_¡©s
+[
+key
+] = 
+v®
+;
+
+28 
+	gm_¡©s
+[
+key
+] = 
+¡d
+::
+max
+(
+™
+->
+£cÚd
+, 
+v®
+);
+
+31 
+g‘
+(cÚ¡ 
+¡d
+::
+¡ršg
+ & 
+key
+) const
+
+33 
+M­Ty³
+::
+cÚ¡_™”©Ü
+ 
+™
+ = 
+m_¡©s
+.
+fšd
+(
+key
+);
+
+34 if(
+	g™
+ =ð
+m_¡©s
+.
+’d
+())
+
+36  
+	g™
+->
+	g£cÚd
+;
+
+39 
+	g¡d
+::
+veùÜ
+<
+¡d
+::
+¡ršg
+> 
+	$keys
+() const
+
+41 
+¡d
+::
+veùÜ
+<¡d::
+¡ršg
+> 
+out
+;
+
+42 
+M­Ty³
+::
+cÚ¡_™”©Ü
+ 
+™
+ = 
+m_¡©s
+.
+	`begš
+();
+
+43 
+™
+ !ð
+m_¡©s
+.
+	`’d
+();
+
+44 ++
+™
+)
+
+46 
+out
+.
+	`push_back
+(
+™
+->
+fœ¡
+);
+
+48  
+out
+;
+
+49 
+	}
+}
+
+51 
+dump
+(
+¡d
+::
+o¡»am
+ & 
+out
+, cÚ¡ std::
+¡ršg
+ & 
+´efix
+ = "") const
+
+53 
+out
+ << "‚od" << 
+m_id
+ << ":\n";
+
+54 
+	gM­Ty³
+::
+cÚ¡_™”©Ü
+ 
+™
+ = 
+m_¡©s
+.
+begš
+();
+
+55 
+	g™
+ !ð
+m_¡©s
+.
+’d
+();
+
+56 ++
+	g™
+)
+
+58 
+	gout
+ << 
+	g´efix
+ << " " << 
+	g™
+->
+	gfœ¡
+ << " = " << it->
+	g£cÚd
+ << "\n";
+
+62 
+	g´iv©e
+:
+
+63 
+ušt32_t
+ 
+m_id
+;
+
+65 
+	g¡d
+::
+	tm­
+<
+	t¡d
+::
+	t¡ršg
+, > 
+	tM­Ty³
+;
+
+66 
+M­Ty³
+ 
+	gm_¡©s
+;
+
 	@gnutella.cc
 
 2 
@@ -24266,8 +24574,8 @@ x
 .
 1
 /usr/include
-36
-628
+37
+645
 Cache.cc
 Cache.cpp
 Cache.h
@@ -24297,6 +24605,7 @@ QueryLatencyContainer.h
 Request.cc
 Request.h
 RequestContainer.cc
+StatCollector.hh
 gnutella.cc
 /usr/include/arpa/inet.h
 /usr/include/assert.h

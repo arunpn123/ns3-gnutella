@@ -18,6 +18,7 @@
 #include "QueryLatencyContainer.h"
 #include "Cache.h"
 
+#include "StatCollector.hh"
 // Define Constants
 #define MSG_CONNECT_REQUEST 		"GNUTELLA CONNECT/0.4\n\n"
 #define MSG_CONNECT_OK 				"GNUTELLA OK\n\n"
@@ -49,6 +50,12 @@ class GnutellaApp: public Application
         void PingPeers();
         uint32_t GetAverageQueryResponseTime();
         void LogAverageQueryResponseTime();
+        void PrintStats()
+        {
+            m_stats.dump(std::cout);
+            std::cout << "    requests remaining: " << m_requests.GetSize() << "\n";
+        }
+
 
     private:
     
@@ -135,13 +142,14 @@ class GnutellaApp: public Application
 		void FastQueryDownloadConnectionSucceeded(Ptr<Socket> socket);
 		void FastQueryDownloadConnectionFailed( Ptr<Socket> socket);
     	// Generate some files
-    	void GenerateFiles();
     	
+    	void GenerateFiles(unsigned int num_files = 10);
     	// Compute Servent ID
     	void GetServentID(Ipv4Address ipv4, uint8_t *sid);
 
         void LogMessage(const char * message);
 
+        std::string getRandomFilename() const;
 		// Member variables
 		Address m_local;
 		Address m_bootstrap;
@@ -165,6 +173,14 @@ class GnutellaApp: public Application
         FileDownloadContainer m_downloads;
 
         QueryLatencyContainer m_query_responses;
+
+        StatCollector m_stats;
+
+        unsigned int m_max_files;
+        Ptr<UniformRandomVariable> m_uniform_rng;
+
+        uint32_t m_node_id;
+	uint32_t myqueries;
 
         LruCache<std::string, CacheEntry> cache;
 

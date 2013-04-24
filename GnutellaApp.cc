@@ -1088,8 +1088,6 @@ void GnutellaApp::HandlePeerClose (Ptr<Socket> socket)
  
 void GnutellaApp::HandlePeerError (Ptr<Socket> socket)
 {
-if(isSameIpAddress(peeraddr, m_local))
-        m_stats.incr("connect_to_self");
   m_stats.incr("peer_error");
 
   LogMessage("Peer Error");
