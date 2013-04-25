@@ -575,7 +575,7 @@ void GnutellaApp::HandleQuery(QueryDescriptor* desc, Peer* p)
 {
     // blaub: DONT forward your own query
     bool hit_mine = false;
-    
+    uint16_t queryTypeLocal = 1;
     Request *r = m_requests.GetRequestById(desc->GetHeader().descriptor_id);
     if(r && r->IsSelf())
     {
@@ -590,6 +590,7 @@ void GnutellaApp::HandleQuery(QueryDescriptor* desc, Peer* p)
     std::vector<File*> result = m_files.GetFileByName(desc->GetSearchCriteria());
     if (result.size() > 0) // Files found
     {
+		LogMessage("Local File System Match");
         // Create a new QueryHit descriptor
         Descriptor::DescriptorHeader header;
         // Store header fields
@@ -637,13 +638,14 @@ void GnutellaApp::HandleQuery(QueryDescriptor* desc, Peer* p)
 		delete [] result_set;
 		
 	}
-	else if(desc->query_type_==1)
+	else if(desc->query_type_== queryTypeLocal)
 	{//fast query - search in cache. do not forward
 		LogMessage("Received a FASTQUERY. Searching in cache");
 		CacheEntry entry;
 		bool cacheresult = cache.get(desc->search_criteria_, entry);
 		if(cacheresult == true)
 		{
+			LogMessage("Entry Found in Cache");
 			//prepare a queryhitdescriptor and populate it with the cache entries and send
 			//TODO: not sure about serverid
 			// Create a new QueryHit descriptor
@@ -685,7 +687,6 @@ void GnutellaApp::HandleQuery(QueryDescriptor* desc, Peer* p)
 //			Descriptor* parent_desc;
 //			FastQueryMissDescriptor miss_desc= FastQueryMissDescriptor::Create(desc->GetHeader(), desc->search_criteria_);
 //			parent_desc = &miss_desc;
-
 			FastQueryMissDescriptor * miss_desc = new FastQueryMissDescriptor(desc->GetHeader(), desc->search_criteria_);
 			Send(miss_desc, p);
 			LogMessage("Sending FAST_QUERY_MISS");
@@ -1159,7 +1160,7 @@ void GnutellaApp::SendQuery(std::string filename)
 
     	//first send a fast query to all connected peers . 1->fast query
 		QueryDescriptor *q = new QueryDescriptor(GetNode(), 0, filename, 1);
- 
+		std::cout <<"SendQuery desc->query_type_" << q->query_type_;
         // Update the query response measurements
 		DescriptorId desc_id = q->GetHeader().descriptor_id;
 		m_query_responses.AddQuery(desc_id);
